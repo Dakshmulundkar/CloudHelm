@@ -69,8 +69,8 @@ CloudHelm provides a unified platform that addresses these challenges:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd cloudhelm
+   git clone https://github.com/Dakshmulundkar/CloudHelm.git
+   cd CloudHelm
    ```
 
 2. **Setup Python virtual environment**
