@@ -1,6 +1,9 @@
 # Kiro IDE
 .kiro/
 
+# Reference files
+refrence/
+
 # Documentation files (except README.md)
 *.md
 !README.md
