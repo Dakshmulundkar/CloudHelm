@@ -314,6 +314,38 @@ The assistant supports CLI-like commands for testing and debugging:
 
 ---
 
+## Deployment
+
+CloudHelm can be deployed to production using free tier services:
+
+- **Backend**: Render (Free tier)
+- **Frontend**: Netlify or Vercel (Free tier)
+- **Database**: Neon PostgreSQL (Free tier)
+
+**Total Monthly Cost: $0** ✨
+
+### Quick Deploy
+
+1. **Deploy Backend to Render**
+   - Connect GitHub repository
+   - Set environment variables
+   - Deploy automatically
+
+2. **Deploy Frontend to Netlify/Vercel**
+   - Connect GitHub repository
+   - Set `VITE_API_BASE_URL`
+   - Deploy automatically
+
+3. **Update OAuth Redirect URIs**
+   - Update GitHub OAuth callback URL
+   - Update Google OAuth callback URL
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
+
+For step-by-step checklist, see [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
+
+---
+
 ## Project Structure
 
 ```

@@ -20,9 +20,20 @@ app = FastAPI(
 )
 
 # Configure CORS
+# Support multiple origins for production
+allowed_origins = [settings.frontend_origin]
+
+# Add additional origins if specified
+if settings.app_env == "production":
+    # Allow both with and without trailing slash
+    if not settings.frontend_origin.endswith("/"):
+        allowed_origins.append(settings.frontend_origin + "/")
+    else:
+        allowed_origins.append(settings.frontend_origin.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
