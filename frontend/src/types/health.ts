@@ -53,12 +53,15 @@ export interface MetricHistory {
 }
 
 export interface Container {
+  id: string;
   container_id: string;
+  name: string;
   container_name: string;
   image: string;
   status: string;
   created: string;
   ports: string[];
+  stats?: ContainerStats;
 }
 
 export interface ContainerStats {
@@ -76,6 +79,7 @@ export interface ContainerStats {
 }
 
 export interface Pod {
+  uid: string;
   name: string;
   namespace: string;
   phase: string;
@@ -84,6 +88,11 @@ export interface Pod {
   restart_count: number;
   node_name: string | null;
   created: string | null;
+  container_statuses: Array<{
+    ready: boolean;
+    name: string;
+    state: string;
+  }>;
 }
 
 export interface Deployment {
