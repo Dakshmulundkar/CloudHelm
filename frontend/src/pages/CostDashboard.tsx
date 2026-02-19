@@ -164,13 +164,42 @@ export default function CostDashboard() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              {/* Glassmorphism Container */}
+              <div className="absolute inset-0 bg-white/5 rounded-full backdrop-blur-xl border border-white/10 shadow-2xl"></div>
+              <div className="absolute inset-2 bg-white/3 rounded-full backdrop-blur-lg"></div>
+              
+              {/* Rotating Rings */}
+              <div className="absolute inset-0 border-4 border-transparent border-t-white/40 rounded-full animate-spin"></div>
+              <div className="absolute inset-3 border-4 border-transparent border-t-white/30 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+              <div className="absolute inset-6 border-4 border-transparent border-t-white/20 rounded-full animate-spin" style={{ animationDuration: '2s' }}></div>
+              
+              {/* Center Glow */}
+              <div className="absolute inset-8 bg-white/10 rounded-full blur-md animate-pulse"></div>
+            </div>
+            <p className="text-slate-300 font-medium text-lg mb-2">Loading cost data...</p>
+            <div className="flex items-center justify-center gap-1.5">
+              <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <CostSummaryCards
-        costData={costData}
-        budgets={budgets}
-        anomalyCount={anomalies.length}
-        loading={loading}
-      />
+      {!loading && (
+        <CostSummaryCards
+          costData={costData}
+          budgets={budgets}
+          anomalyCount={anomalies.length}
+          loading={loading}
+        />
+      )}
 
       {/* File Upload Section */}
       <div className="bg-slate-900/60 backdrop-blur-lg border border-slate-700 rounded-xl shadow-xl p-6 mb-6">
@@ -226,9 +255,12 @@ export default function CostDashboard() {
         </div>
 
         {uploadingFile && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-cyan-400"></div>
-            Uploading and processing file...
+          <div className="mt-4 flex items-center gap-3 text-sm text-slate-300">
+            <div className="relative w-5 h-5">
+              <div className="absolute inset-0 border-2 border-transparent border-t-white/40 rounded-full animate-spin"></div>
+              <div className="absolute inset-0.5 border-2 border-transparent border-t-white/30 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
+            </div>
+            <span className="font-medium">Uploading and processing file...</span>
           </div>
         )}
       </div>

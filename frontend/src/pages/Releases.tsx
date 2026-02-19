@@ -1,8 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Repository, Release } from '../types/release';
 import { api } from '../lib/api';
+import CloudHelmAssistant from '../components/CloudHelmAssistant';
 
-// Helper functions
+// Cache duration: 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
+
+interface CachedData {
+  data: any;
+  timestamp: number;
+}
+
+const cache: Record<string, CachedData> = {};
+
+function getCachedData(key: string): any | null {
+  const cached = cache[key];
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedData(key: string, data: any): void {
+  cache[key] = {
+    data,
+    timestamp: Date.now()
+  };
+}
+
+// Helper functions - memoized
 const formatDateTime = (dateStr: string): string => {
   const date = new Date(dateStr);
   return new Intl.DateTimeFormat('en-US', {
@@ -68,35 +94,58 @@ export default function Releases() {
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
-  // Load repositories on mount
-  useEffect(() => {
-    loadRepositories();
-  }, []);
+  // Memoized stats calculation
+  const stats = useMemo(() => ({
+    total: releases.length,
+    healthy: releases.filter(r => r.risk_level === 'Healthy').length,
+    suspect: releases.filter(r => r.risk_level === 'Suspect').length,
+    risky: releases.filter(r => r.risk_level === 'Risky').length,
+  }), [releases]);
 
-  // Load releases when repository is selected
-  useEffect(() => {
-    if (selectedRepo) {
-      loadReleases(selectedRepo);
-    }
-  }, [selectedRepo]);
+  const currentRepo = useMemo(() => 
+    selectedRepo ? repositories.find(r => r.id === selectedRepo) : null,
+    [selectedRepo, repositories]
+  );
 
-  const loadRepositories = async () => {
+  // Load repositories with caching
+  const loadRepositories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      const cacheKey = 'repositories-list';
+      const cachedData = getCachedData(cacheKey);
+      
+      if (cachedData) {
+        setRepositories(cachedData);
+        setLoading(false);
+        return;
+      }
+      
       const repos = await api.listRepositories();
+      setCachedData(cacheKey, repos);
       setRepositories(repos);
     } catch (err: any) {
       setError(err.message || 'Failed to load repositories');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadReleases = async (repoId: string) => {
+  // Load releases with caching
+  const loadReleases = useCallback(async (repoId: string) => {
     try {
       setLoading(true);
       setError(null);
+      
+      const cacheKey = `releases-${repoId}`;
+      const cachedData = getCachedData(cacheKey);
+      
+      if (cachedData) {
+        setReleases(cachedData);
+        setLoading(false);
+        return;
+      }
       
       // First, try to get existing releases
       let repoReleases = await api.getRepositoryReleases(repoId);
@@ -113,6 +162,7 @@ export default function Releases() {
         }
       }
       
+      setCachedData(cacheKey, repoReleases);
       setReleases(repoReleases);
     } catch (err: any) {
       setError(err.message || 'Failed to load releases');
@@ -120,12 +170,26 @@ export default function Releases() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSyncRepositories = async () => {
+  // Load repositories on mount
+  useEffect(() => {
+    loadRepositories();
+  }, [loadRepositories]);
+
+  // Load releases when repository is selected
+  useEffect(() => {
+    if (selectedRepo) {
+      loadReleases(selectedRepo);
+    }
+  }, [selectedRepo, loadReleases]);
+
+  const handleSyncRepositories = useCallback(async () => {
     try {
       setSyncing(true);
       setError(null);
+      // Clear cache
+      delete cache['repositories-list'];
       await api.syncRepositories();
       await loadRepositories();
     } catch (err: any) {
@@ -133,14 +197,16 @@ export default function Releases() {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [loadRepositories]);
 
-  const handleSyncReleases = async () => {
+  const handleSyncReleases = useCallback(async () => {
     if (!selectedRepo) return;
     
     try {
       setSyncing(true);
       setError(null);
+      // Clear cache
+      delete cache[`releases-${selectedRepo}`];
       await api.syncRepositoryReleases(selectedRepo);
       await loadReleases(selectedRepo);
     } catch (err: any) {
@@ -148,16 +214,7 @@ export default function Releases() {
     } finally {
       setSyncing(false);
     }
-  };
-
-  const currentRepo = selectedRepo ? repositories.find(r => r.id === selectedRepo) : null;
-
-  const stats = {
-    total: releases.length,
-    healthy: releases.filter(r => r.risk_level === 'Healthy').length,
-    suspect: releases.filter(r => r.risk_level === 'Suspect').length,
-    risky: releases.filter(r => r.risk_level === 'Risky').length,
-  };
+  }, [selectedRepo, loadReleases]);
 
   if (!selectedRepo) {
     // Repository Selection View
@@ -453,6 +510,12 @@ export default function Releases() {
           )}
         </div>
       </div>
+
+      {/* CloudHelm Assistant */}
+      <CloudHelmAssistant 
+        repositoryId={selectedRepo || undefined}
+        repositoryName={currentRepo?.name}
+      />
     </div>
   );
 }

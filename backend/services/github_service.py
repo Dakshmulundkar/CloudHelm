@@ -43,7 +43,7 @@ class GitHubService:
         self, 
         owner: str, 
         repo: str, 
-        branch: str = "main",
+        branch: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict]:
         """
@@ -53,10 +53,22 @@ class GitHubService:
         """
         try:
             repo_obj = self.client.get_repo(f"{owner}/{repo}")
-            workflows = repo_obj.get_workflow_runs(
-                branch=branch,
-                event="push"
-            )
+            
+            # Try to get default branch if not specified
+            if not branch:
+                branch = repo_obj.default_branch
+                logger.info(f"Using default branch: {branch}")
+            
+            # Try with branch filter first
+            try:
+                workflows = repo_obj.get_workflow_runs(
+                    branch=branch,
+                    event="push"
+                )
+            except GithubException as e:
+                # If branch filter fails, try without it
+                logger.warning(f"Branch filter failed, trying without branch: {e}")
+                workflows = repo_obj.get_workflow_runs(event="push")
             
             releases = []
             count = 0
@@ -91,7 +103,8 @@ class GitHubService:
             
         except GithubException as e:
             logger.error(f"Error fetching workflow runs for {owner}/{repo}: {e}")
-            raise
+            # Return empty list instead of raising to allow fallback to tags
+            return []
     
     def get_release_tags(self, owner: str, repo: str, limit: int = 20) -> List[Dict]:
         """

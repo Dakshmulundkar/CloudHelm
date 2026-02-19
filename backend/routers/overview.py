@@ -3,7 +3,7 @@ Overview Page API endpoints.
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, desc
+from sqlalchemy import and_, func, desc, case
 from typing import Optional, List
 from datetime import date, timedelta, datetime
 from decimal import Decimal
@@ -57,7 +57,7 @@ async def get_kpi_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get aggregated KPI metrics for the overview page."""
+    """Get aggregated KPI metrics for the overview page - OPTIMIZED."""
     start_date, end_date = parse_time_range(time_range)
     
     # Build environment filter
@@ -65,32 +65,49 @@ async def get_kpi_summary(
     if environment != "all":
         env_filter.append(CostAggregate.env == environment)
     
-    # 1. Total cloud spend
-    total_spend_query = db.query(func.sum(CostAggregate.total_cost)).filter(
-        and_(
-            CostAggregate.ts_date >= start_date,
-            CostAggregate.ts_date <= end_date,
-            *env_filter
-        )
-    )
-    total_spend = float(total_spend_query.scalar() or 0)
+    # OPTIMIZATION: Single query for all cost metrics
+    month_start = date.today().replace(day=1)
+    seven_days_ago = date.today() - timedelta(days=7)
     
-    # 2. Spend vs Budget (simplified - using first budget found)
+    cost_metrics = db.query(
+        func.sum(case((
+            and_(CostAggregate.ts_date >= start_date, CostAggregate.ts_date <= end_date),
+            CostAggregate.total_cost
+        ), else_=0)).label('total_spend'),
+        func.sum(case((
+            and_(CostAggregate.ts_date >= month_start, CostAggregate.ts_date <= date.today()),
+            CostAggregate.total_cost
+        ), else_=0)).label('mtd_spend')
+    ).filter(*env_filter).first()
+    
+    total_spend = float(cost_metrics.total_spend or 0)
+    mtd_spend = float(cost_metrics.mtd_spend or 0)
+    
+    # OPTIMIZATION: Single query for anomalies and incidents
+    counts = db.query(
+        func.count(CostAnomaly.id).label('anomalies'),
+        func.count(Incident.id).label('incidents'),
+        func.count(Deployment.id).label('deployments')
+    ).select_from(CostAnomaly).outerjoin(
+        Incident, Incident.status.in_(["open", "investigating"])
+    ).outerjoin(
+        Deployment, Deployment.deployed_at >= seven_days_ago
+    ).filter(
+        and_(
+            CostAnomaly.ts_date >= start_date,
+            CostAnomaly.ts_date <= end_date,
+            *([CostAnomaly.env == environment] if environment != "all" else [])
+        )
+    ).first()
+    
+    active_anomalies = counts.anomalies if counts else 0
+    open_incidents = counts.incidents if counts else 0
+    deployments_count = counts.deployments if counts else 0
+    
+    # Budget calculation
     budget_query = db.query(Budget).first()
     if budget_query:
         monthly_budget = float(budget_query.monthly_budget_amount)
-        # Calculate MTD spend
-        month_start = date.today().replace(day=1)
-        mtd_spend_query = db.query(func.sum(CostAggregate.total_cost)).filter(
-            and_(
-                CostAggregate.ts_date >= month_start,
-                CostAggregate.ts_date <= date.today(),
-                *env_filter
-            )
-        )
-        mtd_spend = float(mtd_spend_query.scalar() or 0)
-        
-        # Project to month end
         days_in_month = (date.today().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
         days_passed = (date.today() - month_start).days + 1
         projected = mtd_spend / days_passed * days_in_month.day if days_passed > 0 else 0
@@ -110,37 +127,12 @@ async def get_kpi_summary(
         spend_vs_budget = SpendVsBudget(percentage=0, status="under")
         forecasted_month_end = 0
     
-    # 3. Active anomalies
-    active_anomalies = db.query(func.count(CostAnomaly.id)).filter(
-        and_(
-            CostAnomaly.ts_date >= start_date,
-            CostAnomaly.ts_date <= end_date,
-            *([CostAnomaly.env == environment] if environment != "all" else [])
-        )
-    ).scalar() or 0
-    
-    # 4. Potential savings (mock data for now)
+    # Mock data for fields without DB tables yet
     potential_savings = 27500.0
-    
-    # 5. Open incidents
-    open_incidents = db.query(func.count(Incident.id)).filter(
-        Incident.status.in_(["open", "investigating"])
-    ).scalar() or 0
-    
-    # 6. Availability and error rate (mock data for now)
     availability = 99.94
     error_rate = 0.08
+    teams_at_risk = 3
     
-    # 7. Deployments count (last 7 days)
-    seven_days_ago = date.today() - timedelta(days=7)
-    deployments_count = db.query(func.count(Deployment.id)).filter(
-        Deployment.deployed_at >= seven_days_ago
-    ).scalar() or 0
-    
-    # 8. Teams at risk (simplified)
-    teams_at_risk = 3  # Mock data
-    
-    # 9. Deltas (mock data for now)
     deltas = KPIDeltas(
         spend_delta="+12.5%",
         anomalies_delta="-2",
@@ -170,7 +162,7 @@ async def get_cost_timeseries(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get daily cost time series with forecast and anomaly markers."""
+    """Get daily cost time series with forecast and anomaly markers - OPTIMIZED."""
     start_date, end_date = parse_time_range(time_range)
     
     # Build environment filter
@@ -178,28 +170,26 @@ async def get_cost_timeseries(
     if environment != "all":
         env_filter.append(CostAggregate.env == environment)
     
-    # Query daily costs
-    daily_costs = db.query(
+    # OPTIMIZATION: Single query with subquery for anomalies
+    daily_costs_query = db.query(
         CostAggregate.ts_date,
-        func.sum(CostAggregate.total_cost).label('total')
+        func.sum(CostAggregate.total_cost).label('total'),
+        func.bool_or(CostAnomaly.id.isnot(None)).label('has_anomaly')
+    ).outerjoin(
+        CostAnomaly,
+        and_(
+            CostAnomaly.ts_date == CostAggregate.ts_date,
+            *([CostAnomaly.env == environment] if environment != "all" else [])
+        )
     ).filter(
         and_(
             CostAggregate.ts_date >= start_date,
             CostAggregate.ts_date <= end_date,
             *env_filter
         )
-    ).group_by(CostAggregate.ts_date).order_by(CostAggregate.ts_date).all()
+    ).group_by(CostAggregate.ts_date).order_by(CostAggregate.ts_date)
     
-    # Get anomaly dates
-    anomaly_dates = set(
-        row[0] for row in db.query(CostAnomaly.ts_date).filter(
-            and_(
-                CostAnomaly.ts_date >= start_date,
-                CostAnomaly.ts_date <= end_date,
-                *([CostAnomaly.env == environment] if environment != "all" else [])
-            )
-        ).all()
-    )
+    daily_costs = daily_costs_query.all()
     
     # Build series with simple forecast (moving average)
     series = []
@@ -216,7 +206,7 @@ async def get_cost_timeseries(
             date=row.ts_date.isoformat(),
             cost=float(row.total),
             forecast=forecast,
-            anomaly=row.ts_date in anomaly_dates
+            anomaly=bool(row.has_anomaly)
         ))
     
     total_cost = sum(costs)

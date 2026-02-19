@@ -101,26 +101,37 @@ class CostAnomaly(Base):
 
 
 class Incident(Base):
-    """Incident tracking for reliability monitoring."""
+    """Incident tracking for reliability monitoring with AI-powered summaries."""
     
     __tablename__ = "incidents"
     
     id = Column(Integer, primary_key=True, index=True)
+    incident_id = Column(String(100), unique=True, nullable=False, index=True)  # e.g., "INC-2024-001"
     title = Column(String(255), nullable=False)
-    status = Column(String(50), nullable=False, index=True)  # "open", "investigating", "resolved"
+    description = Column(String, nullable=True)  # Text field for description
+    status = Column(String(50), nullable=False, index=True)  # "investigating", "identified", "monitoring", "resolved"
     severity = Column(String(50), nullable=False, index=True)  # "low", "medium", "high", "critical"
     created_at = Column(Date, nullable=False, index=True)
     resolved_at = Column(Date, nullable=True)
-    service = Column(String(100), nullable=True)
+    service = Column(String(100), nullable=True, index=True)
     team = Column(String(100), nullable=True)
     env = Column(String(50), nullable=True)  # "prod", "staging", "dev"
     
+    # AI Summary fields (from T-HACK integration)
+    anomalies = Column(String, nullable=True)  # Text description of anomalies
+    recent_releases = Column(String, nullable=True)  # Text description of recent releases
+    metrics_summary = Column(String, nullable=True)  # Text summary of metrics
+    cost_changes = Column(String, nullable=True)  # Text description of cost impact
+    ai_summary = Column(String, nullable=True)  # AI-generated markdown summary
+    summary_generated_at = Column(Date, nullable=True)
+    
     __table_args__ = (
         Index('idx_incident_status_created', 'status', 'created_at'),
+        Index('idx_incident_service_env', 'service', 'env'),
     )
     
     def __repr__(self):
-        return f"<Incident(id={self.id}, title={self.title}, status={self.status}, severity={self.severity})>"
+        return f"<Incident(id={self.id}, incident_id={self.incident_id}, title={self.title}, status={self.status}, severity={self.severity})>"
 
 
 class Deployment(Base):

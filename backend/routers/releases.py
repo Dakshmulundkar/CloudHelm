@@ -217,12 +217,33 @@ def sync_repository_releases(
         from backend.services.github_service import GitHubService
         github_service = GitHubService(token)
         
-        # Try to get workflow runs first
+        # Try to get workflow runs first (most common for CI/CD)
         releases = github_service.get_workflow_runs(owner, repo_name, limit=50)
         
         # If no workflow runs, try release tags
         if not releases:
+            logger.info(f"No workflow runs found, trying release tags for {repo.full_name}")
             releases = github_service.get_release_tags(owner, repo_name, limit=20)
+        
+        # If still no releases, create a synthetic one from the latest commit
+        if not releases:
+            logger.info(f"No releases or tags found, creating synthetic release from latest commit")
+            try:
+                repo_obj = github_service.client.get_repo(f"{owner}/{repo_name}")
+                default_branch = repo_obj.default_branch
+                latest_commit = repo_obj.get_branch(default_branch).commit
+                
+                releases = [{
+                    "service": repo_name,
+                    "version": "latest",
+                    "commit": latest_commit.sha[:8],
+                    "branch": default_branch,
+                    "deployed_at": latest_commit.commit.author.date,
+                    "status": "success",
+                    "triggered_by": latest_commit.author.login if latest_commit.author else None,
+                }]
+            except Exception as e:
+                logger.warning(f"Could not create synthetic release: {e}")
         
         logger.info(f"Found {len(releases)} releases for {repo.full_name}")
         

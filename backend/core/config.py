@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 class Settings(BaseSettings):
@@ -39,6 +44,12 @@ class Settings(BaseSettings):
     google_client_id: str = Field(..., alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(..., alias="GOOGLE_CLIENT_SECRET")
     google_redirect_uri: str = Field(..., alias="GOOGLE_REDIRECT_URI")
+    
+    # AI - Gemini
+    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
+    
+    # AI - Mistral
+    mistral_api_key: Optional[str] = Field(default=None, alias="MISTRAL_API_KEY")
     
     class Config:
         # Look for .env file in the backend directory

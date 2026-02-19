@@ -1,8 +1,15 @@
 """
 Main FastAPI application entry point.
 """
+from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 from backend.core.config import settings
 
 # Create FastAPI app
@@ -28,12 +35,16 @@ async def health_check():
     return {"status": "healthy", "environment": settings.app_env}
 
 # Include routers
-from backend.routers import auth, cost, overview, releases
+from backend.routers import auth, cost, overview, releases, resources, health, incidents, assistant
 app.include_router(auth.router)
 app.include_router(cost.router)
 app.include_router(overview.router)
 app.include_router(releases.repos_router)
 app.include_router(releases.releases_router)
+app.include_router(resources.router)
+app.include_router(health.router)
+app.include_router(incidents.router)
+app.include_router(assistant.router)
 
 if __name__ == "__main__":
     import uvicorn

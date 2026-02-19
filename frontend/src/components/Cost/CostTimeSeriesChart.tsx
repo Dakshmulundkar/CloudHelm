@@ -27,9 +27,10 @@ export default function CostTimeSeriesChart({
 }: CostTimeSeriesChartProps) {
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-slate-900/60 backdrop-blur-lg border border-slate-700 rounded-xl shadow-xl p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-100 mb-4">Cost Trends</h3>
         <div className="h-80 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
         </div>
       </div>
     );
@@ -37,9 +38,9 @@ export default function CostTimeSeriesChart({
 
   if (!costData || costData.series.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Trends</h3>
-        <div className="h-80 flex items-center justify-center text-gray-500">
+      <div className="bg-slate-900/60 backdrop-blur-lg border border-slate-700 rounded-xl shadow-xl p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-100 mb-4">Cost Trends</h3>
+        <div className="h-80 flex items-center justify-center text-slate-400">
           No cost data available. Upload cost files to see trends.
         </div>
       </div>
@@ -93,37 +94,42 @@ export default function CostTimeSeriesChart({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
+    <div className="bg-slate-900/60 backdrop-blur-lg border border-slate-700 rounded-xl shadow-xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Cost Trends</h3>
-        <div className="text-sm text-gray-500">
+        <h3 className="text-lg font-semibold text-slate-100">Cost Trends</h3>
+        <div className="text-sm text-slate-400">
           Grouped by {costData.group_by}
         </div>
       </div>
 
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            stroke="#6b7280"
+            stroke="#9ca3af"
             style={{ fontSize: '12px' }}
+            tick={{ fill: '#9ca3af' }}
           />
           <YAxis
             tickFormatter={formatCurrency}
-            stroke="#6b7280"
+            stroke="#9ca3af"
             style={{ fontSize: '12px' }}
+            tick={{ fill: '#9ca3af' }}
           />
           <Tooltip
             formatter={(value: number) => formatCurrency(value)}
             labelFormatter={formatDate}
             contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'rgba(3, 5, 8, 0.95)',
+              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
-              padding: '12px'
+              padding: '12px',
+              backdropFilter: 'blur(10px)',
+              color: '#fff'
             }}
+            labelStyle={{ fontWeight: 600, marginBottom: '4px', color: '#22d3ee' }}
           />
           <Legend
             wrapperStyle={{ paddingTop: '20px' }}
@@ -144,7 +150,7 @@ export default function CostTimeSeriesChart({
       </ResponsiveContainer>
 
       {anomalies.length > 0 && (
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-slate-400">
           <span className="inline-flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500"></span>
             {anomalies.length} anomalies detected in this period

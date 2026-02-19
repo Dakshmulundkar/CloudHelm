@@ -9,7 +9,11 @@ import os
 import sys
 
 # Add parent directory to path to import backend modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# Get the backend directory (parent of migrations)
+backend_dir = os.path.dirname(os.path.dirname(__file__))
+# Get the project root (parent of backend)
+project_root = os.path.dirname(backend_dir)
+sys.path.insert(0, project_root)
 
 from backend.core.config import settings
 from backend.core.db import Base
@@ -17,6 +21,9 @@ from backend.core.db import Base
 # Import all models so Alembic can detect them
 from backend.models.user import User
 from backend.models.cost import CloudCost, CostAggregate, Budget, CostAnomaly, Incident, Deployment
+from backend.models.release import Repository, Release, ReleaseAnomaly, ReleaseIncident
+from backend.models.resource import Resource, ResourceMetric, Recommendation
+from backend.models.health import Service, ServiceMetric, MetricsAnomaly, ContainerMetric, PodMetric
 
 # this is the Alembic Config object
 config = context.config
