@@ -154,15 +154,125 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex h-[400px] relative z-10">
-                  <div className="flex flex-col gap-6 bg-black/10 w-16 border-r border-white/5 pt-6 pb-6 items-center">
+                  {/* Sidebar */}
+                  <div className="flex flex-col gap-4 bg-black/10 w-16 border-r border-white/5 pt-6 pb-6 items-center">
                     <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9,22 9,12 15,12 15,22" />
+                      </svg>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300 transition-all cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23" />
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                      </svg>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300 transition-all cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                      </svg>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-800/50 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300 transition-all cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                        <polyline points="14,2 14,8 20,8" />
                       </svg>
                     </div>
                   </div>
-                  <div className="flex-1 p-6 flex items-center justify-center text-slate-400 text-sm">
-                    Dashboard Preview
+                  
+                  {/* Main Dashboard Content */}
+                  <div className="flex-1 p-6 bg-gradient-to-br from-black/5 to-black/20">
+                    {/* KPI Cards Row */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      {/* Cost Card */}
+                      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+                              <line x1="12" y1="1" x2="12" y2="23" />
+                              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                            </svg>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+                              <path d="m7 11 2-2-2-2" />
+                              <path d="M11 13h4" />
+                            </svg>
+                            <span className="text-green-400 font-medium">-12%</span>
+                          </div>
+                        </div>
+                        <div className="text-lg font-bold text-white">$24.8K</div>
+                        <div className="text-xs text-slate-400">Monthly Spend</div>
+                      </div>
+                      
+                      {/* Security Card */}
+                      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="w-8 h-8 bg-cyan-500/10 rounded-lg flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                              <path d="m9 12 2 2 4-4" />
+                            </svg>
+                          </div>
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="text-lg font-bold text-white">98.2%</div>
+                        <div className="text-xs text-slate-400">Security Score</div>
+                      </div>
+                      
+                      {/* Performance Card */}
+                      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                              <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+                            </svg>
+                          </div>
+                          <div className="text-xs text-blue-400 font-medium">99.9%</div>
+                        </div>
+                        <div className="text-lg font-bold text-white">142ms</div>
+                        <div className="text-xs text-slate-400">Avg Response</div>
+                      </div>
+                    </div>
+                    
+                    {/* Charts Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Cost Trend Chart */}
+                      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-white">Cost Trends</h3>
+                          <div className="text-xs text-slate-400">Last 30 days</div>
+                        </div>
+                        <div className="h-20 flex items-end gap-1">
+                          {[65, 45, 78, 52, 89, 67, 43, 76, 58, 82, 71, 49, 85, 63, 77].map((height, i) => (
+                            <div key={i} className="flex-1 bg-gradient-to-t from-cyan-500/60 to-cyan-400/40 rounded-sm opacity-80" style={{ height: `${height}%` }}></div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Security Alerts */}
+                      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-white">Security Status</h3>
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                            <span className="text-slate-300">All systems secure</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                            <span className="text-slate-300">2 minor warnings</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                            <span className="text-slate-300">Auto-remediation active</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -440,54 +550,54 @@ export default function Landing() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-32 gap-y-32">
-                {/* Item 1 (Top Left) */}
+                {/* Item 1 (Top Left) - GitHub */}
                 <div className="flex flex-col items-center text-center group">
                   <div className="w-16 h-16 rounded-2xl bg-[#0B0C10] border border-white/10 flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-white transition-colors">
-                      <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
-                      <path d="M12 2a10 10 0 1 1-10 10h10V2z"></path>
-                      <path d="m9 12 2 2 4-4"></path>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-slate-400 group-hover:text-white transition-colors">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                     </svg>
                   </div>
                   <p className="text-sm text-slate-300 max-w-[240px]">
-                    GPT models to generate content and build intelligent agents.
+                    Integrate with GitHub repositories for automated security scanning and code quality analysis.
                   </p>
                 </div>
 
-                {/* Item 2 (Top Right) */}
+                {/* Item 2 (Top Right) - GCP */}
                 <div className="flex flex-col items-center text-center group">
                   <div className="w-16 h-16 rounded-2xl bg-[#0B0C10] border border-white/10 flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300">
-                    <span className="font-serif text-3xl text-slate-400 group-hover:text-white transition-colors">N</span>
-                  </div>
-                  <p className="text-sm text-slate-300 max-w-[240px]">
-                    Summarize tasks, and organize info using Notion's powerful AI assistant.
-                  </p>
-                </div>
-
-                {/* Item 3 (Bottom Left) */}
-                <div className="flex flex-col items-center text-center group">
-                  <div className="w-16 h-16 rounded-2xl bg-[#0B0C10] border border-white/10 flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-white transition-colors">
-                      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                      <rect width="4" height="12" x="2" y="9"></rect>
-                      <circle cx="4" cy="4" r="2"></circle>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-slate-400 group-hover:text-white transition-colors">
+                      <path d="M12 2L2 7v10l10 5 10-5V7l-10-5z"/>
+                      <path d="M12 2v20"/>
+                      <path d="M2 7l10 5 10-5"/>
+                      <path d="M2 17l10-5 10 5"/>
                     </svg>
                   </div>
                   <p className="text-sm text-slate-300 max-w-[240px]">
-                    Connect with Linked In and with dozens of other tools in it
+                    Monitor and secure your Google Cloud infrastructure with real-time compliance checks and cost optimization.
                   </p>
                 </div>
 
-                {/* Item 4 (Bottom Right) */}
+                {/* Item 3 (Bottom Left) - Mistral AI */}
                 <div className="flex flex-col items-center text-center group">
                   <div className="w-16 h-16 rounded-2xl bg-[#0B0C10] border border-white/10 flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-white transition-colors">
-                      <path d="M4 4l11.733 16h4.267l-11.733 -16z"></path>
-                      <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path>
+                    <div className="text-slate-400 group-hover:text-white transition-colors font-bold text-2xl">
+                      M
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-300 max-w-[240px]">
+                    Powered by Mistral AI for intelligent code analysis, security insights, and automated incident response.
+                  </p>
+                </div>
+
+                {/* Item 4 (Bottom Right) - Docker */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-16 h-16 rounded-2xl bg-[#0B0C10] border border-white/10 flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-slate-400 group-hover:text-white transition-colors">
+                      <path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338 0-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983 0 1.938-.089 2.844-.266a11.94 11.94 0 003.766-1.456c1.127-.665 2.086-1.57 2.85-2.691a9.596 9.596 0 001.428-2.55h.237c1.233 0 1.956-.412 2.474-.923.4-.4.696-.95.842-1.539l.056-.244-.333-.207z"/>
                     </svg>
                   </div>
                   <p className="text-sm text-slate-300 max-w-[240px]">
-                    Connect with Twitter and with dozens of other tools in it without code
+                    Containerize and monitor Docker applications with automated security scanning and resource optimization.
                   </p>
                 </div>
               </div>

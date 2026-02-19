@@ -1,11 +1,28 @@
-import { useState } from 'react';
-import { X, Send, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Send, Sparkles, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  type?: 'message' | 'question' | 'task_delegation' | 'task_status';
+  metadata?: any;
+}
+
+interface InteractiveQuestion {
+  question: string;
+  options: Array<{
+    label: string;
+    description: string;
+  }>;
+}
+
+interface TaskInfo {
+  task_id: string;
+  description: string;
+  agent_type: string;
+  status: string;
 }
 
 interface CloudHelmAssistantProps {
@@ -18,10 +35,99 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTasks, setActiveTasks] = useState<TaskInfo[]>([]);
+  const [availableAgents, setAvailableAgents] = useState<any>({});
+  const [showTaskPanel, setShowTaskPanel] = useState(false);
 
-  // Helper to render message content with basic markdown support
-  const renderMessageContent = (content: string) => {
-    // Split by code blocks
+  // Load active tasks and available agents when component opens
+  useEffect(() => {
+    if (isOpen) {
+      loadActiveTasks();
+      loadAvailableAgents();
+    }
+  }, [isOpen]);
+
+  const loadActiveTasks = async () => {
+    try {
+      const response = await api.listActiveTasks();
+      setActiveTasks(response.active_tasks || []);
+    } catch (error) {
+      console.error('Error loading active tasks:', error);
+    }
+  };
+
+  const loadAvailableAgents = async () => {
+    try {
+      const response = await api.getAvailableAgents();
+      setAvailableAgents(response.agents || {});
+    } catch (error) {
+      console.error('Error loading available agents:', error);
+    }
+  };
+
+  // Helper to render message content with enhanced markdown support and interactive elements
+  const renderMessageContent = (message: Message) => {
+    const { content, type, metadata } = message;
+    
+    // Handle interactive questions
+    if (type === 'question' && metadata?.questions) {
+      return (
+        <div className="space-y-4">
+          <div className="text-sm text-zinc-300">{content}</div>
+          {metadata.questions.map((q: InteractiveQuestion, qIndex: number) => (
+            <div key={qIndex} className="bg-zinc-800/30 rounded-lg p-3 border border-zinc-700/50">
+              <h4 className="text-sm font-medium text-white mb-2">{q.question}</h4>
+              <div className="space-y-2">
+                {q.options.map((option, oIndex) => (
+                  <button
+                    key={oIndex}
+                    onClick={() => handleQuestionResponse(qIndex, oIndex, option.label)}
+                    className="w-full text-left p-2 bg-zinc-700/30 hover:bg-zinc-700/50 rounded border border-zinc-600/30 hover:border-zinc-500/50 transition-colors"
+                  >
+                    <div className="text-xs font-medium text-cyan-400">{option.label}</div>
+                    <div className="text-xs text-zinc-400">{option.description}</div>
+                  </button>
+                ))}
+                <button
+                  onClick={() => handleQuestionResponse(qIndex, -1, 'Other')}
+                  className="w-full text-left p-2 bg-zinc-700/30 hover:bg-zinc-700/50 rounded border border-zinc-600/30 hover:border-zinc-500/50 transition-colors"
+                >
+                  <div className="text-xs font-medium text-cyan-400">Other</div>
+                  <div className="text-xs text-zinc-400">Provide your own answer</div>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    // Handle task delegation status
+    if (type === 'task_delegation' && metadata?.task_id) {
+      return (
+        <div className="space-y-3">
+          <div className="text-sm text-zinc-300">{content}</div>
+          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-medium text-indigo-300">Task Delegated</span>
+            </div>
+            <div className="text-xs text-zinc-400">
+              <div>Task ID: <code className="text-cyan-400">{metadata.task_id}</code></div>
+              <div>Agent: <span className="text-indigo-300">{metadata.agent_type}</span></div>
+            </div>
+            <button
+              onClick={() => checkTaskStatus(metadata.task_id)}
+              className="mt-2 text-xs text-indigo-400 hover:text-indigo-300 underline"
+            >
+              Check Status
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Regular message content with code blocks
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
@@ -54,6 +160,68 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
     });
   };
 
+  const handleQuestionResponse = async (_questionIndex: number, _optionIndex: number, response: string) => {
+    const userMessage: Message = {
+      role: 'user',
+      content: `Selected: ${response}`,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Send the response back to the assistant
+      const apiResponse = await api.queryAssistant({
+        repository_id: repositoryId,
+        repository_name: repositoryName,
+        query: `User selected: ${response}. Please continue with guidance based on this choice.`,
+        context_type: 'general',
+      });
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: apiResponse.response,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('Error sending question response:', error);
+      
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `Sorry, I encountered an error processing your response: ${error.message || 'Unknown error'}`,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkTaskStatus = async (taskId: string) => {
+    try {
+      const status = await api.getTaskStatus(taskId);
+      
+      const statusMessage: Message = {
+        role: 'system',
+        content: `Task ${taskId} Status: ${status.status}${status.result ? `\n\nResult: ${status.result.substring(0, 500)}...` : ''}${status.error ? `\n\nError: ${status.error}` : ''}`,
+        timestamp: new Date(),
+        type: 'task_status',
+        metadata: status
+      };
+      
+      setMessages(prev => [...prev, statusMessage]);
+      
+      // Refresh active tasks
+      loadActiveTasks();
+    } catch (error: any) {
+      console.error('Error checking task status:', error);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -69,7 +237,40 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
     setIsLoading(true);
 
     try {
-      // Call Mistral AI through backend API
+      // Check if this is a task delegation command
+      if (currentInput.startsWith('/task ')) {
+        const taskDescription = currentInput.substring(6).trim();
+        
+        // Try to delegate the task
+        try {
+          const delegationResponse = await api.delegateTask({
+            task_description: taskDescription,
+            agent_type: 'explore', // Default, will be determined by backend
+            repository_name: repositoryName || 'Unknown Repository',
+          });
+          
+          const taskMessage: Message = {
+            role: 'assistant',
+            content: `🤖 **Task Delegated Successfully**\n\nI've assigned this task to a specialized subagent.\n\n**Task ID:** \`${delegationResponse.task_id}\`\n**Description:** ${taskDescription}\n\nThe subagent is working on this independently. You can check the progress or continue with other tasks.`,
+            timestamp: new Date(),
+            type: 'task_delegation',
+            metadata: {
+              task_id: delegationResponse.task_id,
+              agent_type: 'subagent',
+              description: taskDescription
+            }
+          };
+          
+          setMessages(prev => [...prev, taskMessage]);
+          loadActiveTasks(); // Refresh active tasks
+          return;
+        } catch (delegationError) {
+          // Fall back to regular query if delegation fails
+          console.warn('Task delegation failed, falling back to regular query:', delegationError);
+        }
+      }
+
+      // Regular assistant query
       const response = await api.queryAssistant({
         repository_id: repositoryId,
         repository_name: repositoryName,
@@ -77,6 +278,27 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
         context_type: 'general',
       });
 
+      // Check if response contains interactive questions
+      const questionPattern = /🤔.*I need your input.*Question \d+:/s;
+      if (questionPattern.test(response.response)) {
+        // Parse interactive questions from response
+        const questions = parseInteractiveQuestions(response.response);
+        
+        if (questions.length > 0) {
+          const questionMessage: Message = {
+            role: 'assistant',
+            content: response.response,
+            timestamp: new Date(),
+            type: 'question',
+            metadata: { questions }
+          };
+          
+          setMessages(prev => [...prev, questionMessage]);
+          return;
+        }
+      }
+
+      // Regular assistant message
       const assistantMessage: Message = {
         role: 'assistant',
         content: response.response,
@@ -97,6 +319,40 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const parseInteractiveQuestions = (response: string): InteractiveQuestion[] => {
+    // Simple parser for interactive questions
+    // This is a basic implementation - in a real app you'd want more robust parsing
+    const questions: InteractiveQuestion[] = [];
+    
+    try {
+      const questionMatches = response.match(/\*\*Question \d+:\*\* (.+?)\n\n((?:\d+\. \*\*[^*]+\*\* - [^\n]+\n?)+)/g);
+      
+      if (questionMatches) {
+        questionMatches.forEach(match => {
+          const questionMatch = match.match(/\*\*Question \d+:\*\* (.+?)\n\n/);
+          const optionsMatch = match.match(/(\d+\. \*\*[^*]+\*\* - [^\n]+)/g);
+          
+          if (questionMatch && optionsMatch) {
+            const question = questionMatch[1];
+            const options = optionsMatch.map(opt => {
+              const optMatch = opt.match(/\d+\. \*\*([^*]+)\*\* - (.+)/);
+              return optMatch ? {
+                label: optMatch[1],
+                description: optMatch[2]
+              } : { label: 'Unknown', description: '' };
+            });
+            
+            questions.push({ question, options });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing interactive questions:', error);
+    }
+    
+    return questions;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -145,6 +401,15 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></div>
                   <span className="text-sm font-semibold text-indigo-300">CloudHelm Assistant</span>
+                  {activeTasks.length > 0 && (
+                    <button
+                      onClick={() => setShowTaskPanel(!showTaskPanel)}
+                      className="flex items-center gap-1 px-2 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 rounded text-xs text-indigo-300 transition-colors"
+                    >
+                      <Users className="w-3 h-3" />
+                      {activeTasks.length}
+                    </button>
+                  )}
                 </div>
                 <span className="text-[10px] text-zinc-500">v2.1 Model • Powered by Mistral AI</span>
               </div>
@@ -166,6 +431,44 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
             </div>
           )}
 
+          {/* Active Tasks Panel */}
+          {showTaskPanel && activeTasks.length > 0 && (
+            <div className="px-4 py-3 bg-zinc-800/30 border-b border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-medium text-indigo-300">Active Subagents</span>
+              </div>
+              <div className="space-y-2">
+                {activeTasks.map((task) => (
+                  <div key={task.task_id} className="flex items-center justify-between p-2 bg-zinc-900/50 rounded border border-zinc-700/30">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-white truncate">{task.description}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-zinc-400">{task.agent_type}</span>
+                        <div className="flex items-center gap-1">
+                          {task.status === 'running' ? (
+                            <Clock className="w-3 h-3 text-yellow-400" />
+                          ) : task.status === 'completed' ? (
+                            <CheckCircle className="w-3 h-3 text-green-400" />
+                          ) : (
+                            <AlertCircle className="w-3 h-3 text-red-400" />
+                          )}
+                          <span className="text-xs text-zinc-500">{task.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => checkTaskStatus(task.task_id)}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 hover:bg-indigo-500/10 rounded transition-colors"
+                    >
+                      Check
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
@@ -175,38 +478,44 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">CloudHelm Assistant</h3>
                 <p className="text-sm text-zinc-400 mb-4">
-                  I can help you analyze code, run tests, find errors, and provide solutions for incidents.
+                  I'm your AI coding companion! Ask me about code quality, testing strategies, architecture decisions, or anything development-related.
                 </p>
                 <div className="w-full space-y-2 text-left">
+                  <button
+                    onClick={() => setInput('How can I improve the testing strategy for this project?')}
+                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
+                  >
+                    🧪 How can I improve testing in this project?
+                  </button>
+                  <button
+                    onClick={() => setInput('What are potential security issues I should look for?')}
+                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
+                  >
+                    🛡️ What security issues should I watch for?
+                  </button>
+                  <button
+                    onClick={() => setInput('/task analyze the codebase structure and identify key components')}
+                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
+                  >
+                    🤖 Delegate: Analyze codebase structure
+                  </button>
+                  <button
+                    onClick={() => setInput('Can you review the code quality and suggest improvements?')}
+                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
+                  >
+                    🔍 Review code quality and suggest improvements
+                  </button>
+                  <button
+                    onClick={() => setInput('/agents')}
+                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
+                  >
+                    👥 Show available subagents
+                  </button>
                   <button
                     onClick={() => setInput('/help')}
                     className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
                   >
-                    🤖 Show CLI commands
-                  </button>
-                  <button
-                    onClick={() => setInput('/test')}
-                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
-                  >
-                    🧪 Run tests
-                  </button>
-                  <button
-                    onClick={() => setInput('/lint')}
-                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
-                  >
-                    🔍 Run linter
-                  </button>
-                  <button
-                    onClick={() => setInput('/errors')}
-                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
-                  >
-                    🐛 Find errors
-                  </button>
-                  <button
-                    onClick={() => setInput('Analyze the latest release for potential issues')}
-                    className="w-full p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg text-xs text-zinc-300 text-left transition-colors border border-zinc-700/50"
-                  >
-                    💡 Analyze latest release
+                    🤖 Show all capabilities
                   </button>
                 </div>
               </div>
@@ -231,7 +540,7 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
                   }`}
                 >
                   <div className="text-sm leading-relaxed">
-                    {renderMessageContent(message.content)}
+                    {renderMessageContent(message)}
                   </div>
                   <span className="text-[10px] text-zinc-500 mt-1 block">
                     {message.timestamp.toLocaleTimeString()}
@@ -270,7 +579,7 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask questions or use /help for CLI commands..."
+                placeholder="Ask me anything, use /task to delegate work, or try /help for commands..."
                 className="flex-1 px-4 py-2.5 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
               />
               <button
@@ -282,7 +591,7 @@ export default function CloudHelmAssistant({ repositoryId, repositoryName }: Clo
               </button>
             </div>
             <p className="text-[10px] text-zinc-600 mt-2 text-center">
-              Powered by Mistral AI • Type /help for CLI commands
+              Powered by Mistral AI • Your conversational coding companion
             </p>
           </div>
         </div>

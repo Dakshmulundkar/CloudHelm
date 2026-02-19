@@ -29,6 +29,143 @@ class AssistantResponse(BaseModel):
     repository_name: Optional[str] = None
 
 
+class TaskDelegationRequest(BaseModel):
+    """Request model for task delegation"""
+    task_description: str
+    agent_type: str
+    repository_name: str
+    context: Optional[dict] = None
+
+
+class TaskStatusResponse(BaseModel):
+    """Response model for task status"""
+    task_id: str
+    description: str
+    agent_type: str
+    status: str
+    repository: str
+    result: Optional[str] = None
+    error: Optional[str] = None
+
+
+class InteractiveQuestionRequest(BaseModel):
+    """Request model for interactive questions"""
+    questions: list
+    repository_name: str
+
+
+@router.post("/delegate-task")
+async def delegate_task(
+    request: TaskDelegationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delegate a task to a specialized subagent"""
+    try:
+        task_id = await subagent_service.delegate_task(
+            task_description=request.task_description,
+            agent_type=request.agent_type,
+            repository_name=request.repository_name,
+            context=request.context
+        )
+        
+        return {
+            "task_id": task_id,
+            "message": f"Task delegated to {request.agent_type} subagent",
+            "status": "pending"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error delegating task: {str(e)}"
+        )
+
+
+@router.get("/task-status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get the status of a delegated task"""
+    try:
+        status = subagent_service.get_task_status(task_id)
+        
+        if "error" in status:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        return TaskStatusResponse(**status)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting task status: {str(e)}"
+        )
+
+
+@router.get("/active-tasks")
+async def list_active_tasks(
+    current_user: User = Depends(get_current_user)
+):
+    """List all active tasks"""
+    try:
+        active_tasks = subagent_service.list_active_tasks()
+        completed_tasks = subagent_service.list_completed_tasks(10)
+        
+        return {
+            "active_tasks": active_tasks,
+            "completed_tasks": completed_tasks
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error listing tasks: {str(e)}"
+        )
+
+
+@router.get("/available-agents")
+async def get_available_agents(
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of available subagent types"""
+    try:
+        agents = subagent_service.get_available_agents()
+        return {"agents": agents}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting available agents: {str(e)}"
+        )
+
+
+@router.post("/ask-questions")
+async def ask_interactive_questions(
+    request: InteractiveQuestionRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Ask interactive questions to the user"""
+    try:
+        response_text = await mistral_service.ask_user_question(
+            questions=request.questions,
+            repository_name=request.repository_name
+        )
+        
+        return AssistantResponse(
+            response=response_text,
+            repository_name=request.repository_name
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error asking questions: {str(e)}"
+        )
+
+
 @router.post("/query", response_model=AssistantResponse)
 async def query_assistant(
     request: AssistantRequest,
