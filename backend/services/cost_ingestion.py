@@ -15,6 +15,7 @@ from backend.schemas.cost import UploadResponse
 async def ingest_aws_cost_csv(file: UploadFile, db: Session) -> UploadResponse:
     """
     Ingest AWS Cost and Usage Report (CUR) CSV file.
+    Simplified version using standard library CSV parser.
     
     Args:
         file: Uploaded CSV file
@@ -26,19 +27,16 @@ async def ingest_aws_cost_csv(file: UploadFile, db: Session) -> UploadResponse:
     try:
         # Read file contents
         contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
+        content_str = contents.decode('utf-8')
+        
+        # Parse CSV
+        csv_reader = csv.DictReader(io.StringIO(content_str))
+        rows = list(csv_reader)
+        
+        if not rows:
+            raise HTTPException(status_code=400, detail="Empty CSV file")
         
         # AWS CUR column mapping (simplified - adjust based on actual CUR format)
-        # Common CUR columns:
-        # - lineItem/UsageStartDate
-        # - lineItem/UnblendedCost
-        # - lineItem/UsageAccountId
-        # - product/region
-        # - lineItem/ProductCode
-        # - resourceTags/user:env
-        # - resourceTags/user:team
-        
-        # Normalize column names (handle different CUR versions)
         column_mapping = {
             'lineItem/UsageStartDate': 'usage_date',
             'lineItem/UnblendedCost': 'cost',
@@ -51,70 +49,79 @@ async def ingest_aws_cost_csv(file: UploadFile, db: Session) -> UploadResponse:
             'resourceTags/user:team': 'team',
         }
         
-        # Try to find matching columns (case-insensitive)
-        available_columns = df.columns.tolist()
-        mapped_data = {}
+        # Find matching columns (case-insensitive)
+        available_columns = list(rows[0].keys()) if rows else []
+        column_map = {}
         
         for aws_col, normalized_col in column_mapping.items():
-            # Find column (exact match or case-insensitive)
-            matching_col = None
             for col in available_columns:
                 if col == aws_col or col.lower() == aws_col.lower():
-                    matching_col = col
+                    column_map[normalized_col] = col
                     break
-            
-            if matching_col:
-                mapped_data[normalized_col] = df[matching_col]
-        
-        # Create normalized DataFrame
-        normalized_df = pd.DataFrame(mapped_data)
         
         # Ensure required columns exist
         required_cols = ['usage_date', 'cost', 'account_id', 'service']
-        missing_cols = [col for col in required_cols if col not in normalized_df.columns]
+        missing_cols = [col for col in required_cols if col not in column_map]
         if missing_cols:
             raise HTTPException(
                 status_code=400,
                 detail=f"Missing required columns in AWS CUR: {missing_cols}"
             )
         
-        # Convert date column
-        normalized_df['usage_date'] = pd.to_datetime(normalized_df['usage_date']).dt.date
-        
-        # Fill missing optional columns
-        if 'region' not in normalized_df.columns:
-            normalized_df['region'] = 'unknown'
-        if 'env' not in normalized_df.columns:
-            normalized_df['env'] = None
-        if 'team' not in normalized_df.columns:
-            normalized_df['team'] = None
-        if 'usage_type' not in normalized_df.columns:
-            normalized_df['usage_type'] = None
-        if 'currency' not in normalized_df.columns:
-            normalized_df['currency'] = 'USD'
-        
-        # Filter out zero-cost rows
-        normalized_df = normalized_df[normalized_df['cost'] > 0]
-        
-        # Add cloud provider
-        normalized_df['cloud'] = 'aws'
-        
-        # Prepare records for bulk insert
+        # Process rows
         records = []
-        for _, row in normalized_df.iterrows():
-            record = CloudCost(
-                ts_date=row['usage_date'],
-                cloud='aws',
-                account_id=str(row['account_id']),
-                service=str(row['service']),
-                region=str(row['region']),
-                env=str(row['env']) if pd.notna(row['env']) else None,
-                team=str(row['team']) if pd.notna(row['team']) else None,
-                usage_type=str(row['usage_type']) if pd.notna(row['usage_type']) else None,
-                cost_amount=float(row['cost']),
-                currency=str(row['currency'])
-            )
-            records.append(record)
+        total_cost = 0.0
+        dates = []
+        
+        for row in rows:
+            try:
+                # Extract and validate data
+                usage_date_str = row.get(column_map['usage_date'], '')
+                cost_str = row.get(column_map['cost'], '0')
+                
+                if not usage_date_str or not cost_str:
+                    continue
+                
+                # Parse date
+                usage_date = datetime.strptime(usage_date_str.split('T')[0], '%Y-%m-%d').date()
+                
+                # Parse cost
+                cost = float(cost_str)
+                if cost <= 0:
+                    continue
+                
+                # Extract other fields
+                account_id = row.get(column_map['account_id'], '')
+                service = row.get(column_map['service'], '')
+                region = row.get(column_map.get('region', ''), 'unknown')
+                usage_type = row.get(column_map.get('usage_type', ''), None)
+                currency = row.get(column_map.get('currency', ''), 'USD')
+                env = row.get(column_map.get('env', ''), None)
+                team = row.get(column_map.get('team', ''), None)
+                
+                # Create record
+                record = CloudCost(
+                    ts_date=usage_date,
+                    cloud='aws',
+                    account_id=str(account_id),
+                    service=str(service),
+                    region=str(region),
+                    env=str(env) if env else None,
+                    team=str(team) if team else None,
+                    usage_type=str(usage_type) if usage_type else None,
+                    cost_amount=cost,
+                    currency=str(currency)
+                )
+                records.append(record)
+                total_cost += cost
+                dates.append(usage_date)
+                
+            except (ValueError, TypeError) as e:
+                # Skip invalid rows
+                continue
+        
+        if not records:
+            raise HTTPException(status_code=400, detail="No valid cost records found in CSV")
         
         # Bulk insert in batches
         batch_size = 1000
@@ -124,9 +131,8 @@ async def ingest_aws_cost_csv(file: UploadFile, db: Session) -> UploadResponse:
             db.commit()
         
         # Calculate statistics
-        start_date = normalized_df['usage_date'].min()
-        end_date = normalized_df['usage_date'].max()
-        total_cost = float(normalized_df['cost'].sum())
+        start_date = min(dates) if dates else date.today()
+        end_date = max(dates) if dates else date.today()
         rows_ingested = len(records)
         
         return UploadResponse(
@@ -137,8 +143,8 @@ async def ingest_aws_cost_csv(file: UploadFile, db: Session) -> UploadResponse:
             cloud='aws'
         )
         
-    except pd.errors.EmptyDataError:
-        raise HTTPException(status_code=400, detail="Empty CSV file")
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error processing AWS CUR: {str(e)}")
