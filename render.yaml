@@ -1,13 +1,13 @@
 services:
-  # Backend API Service
+  # Backend API Service (Docker Container)
   - type: web
     name: cloudhelm-api
-    env: python
+    env: docker
     region: oregon
     plan: free
     branch: main
-    buildCommand: cd backend && pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: cd backend && python start.py
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.7

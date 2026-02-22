@@ -1,5 +1,6 @@
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -9,15 +10,27 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements first for better Docker layer caching
+COPY backend/requirements.txt /app/backend/requirements.txt
 
-# Copy application code
+# Install Python dependencies
+RUN cd backend && pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
 COPY . .
+
+# Set Python path to include the project root
+ENV PYTHONPATH=/app
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+USER app
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["python", "-m", "backend.main"]
+# Change to backend directory and run the application
+WORKDIR /app/backend
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -4,9 +4,9 @@
 # Reference files
 refrence/
 
-# Documentation files (except README.md)
-*.md
-!README.md
+# Documentation files (keep deployment docs)
+# *.md (commented out to keep deployment documentation)
+# !README.md
 
 # Environment Variables
 .env
