@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-from backend.core.config import settings
+from core.config import settings
 
 # Create FastAPI app
 app = FastAPI(
@@ -46,7 +46,7 @@ async def health_check():
     return {"status": "healthy", "environment": settings.app_env}
 
 # Include routers
-from backend.routers import auth, cost, overview, releases, resources, health, incidents, assistant
+from routers import auth, cost, overview, releases, resources, health, incidents, assistant
 app.include_router(auth.router)
 app.include_router(cost.router)
 app.include_router(overview.router)
@@ -60,7 +60,7 @@ app.include_router(assistant.router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "backend.main:app",
+        "main:app",
         host=settings.app_host,
         port=settings.app_port,
         reload=settings.app_env == "dev"
